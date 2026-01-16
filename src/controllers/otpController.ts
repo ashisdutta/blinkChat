@@ -13,21 +13,6 @@ interface OtpRecord {
 }
 const otpStore = new Map<string, OtpRecord>();
 
-// --- DEBUGGING START ---
-console.log("-----------------------------------------");
-console.log(`DEBUG: User: '${process.env.EMAIL_USER}'`); // Quotes help see spaces
-console.log(
-  `DEBUG: Pass Length: ${
-    process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0
-  }`
-);
-console.log(
-  "DEBUG: Pass Type: " +
-    (process.env.EMAIL_PASS?.includes(" ") ? "Contains Spaces" : "No Spaces")
-);
-console.log("-----------------------------------------");
-// --- DEBUGGING END ---
-
 // --- Email Configuration ---
 const transporter = nodemailer.createTransport({
   service: "gmail", // Or your SMTP provider

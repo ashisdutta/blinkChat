@@ -5,13 +5,12 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
 
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 // --- Register ---
 export const register = async (req: Request, res: Response) => {
   // 1. Validate Input (Username, Password, verificationToken)
-  // Ensure your registerSchema now includes: verificationToken: z.string()
   const result = registerSchema.safeParse(req.body);
 
   if (!result.success) {
@@ -25,7 +24,6 @@ export const register = async (req: Request, res: Response) => {
 
   try {
     // 2. Verify the Token to get the Email
-    // This ensures the email was actually verified by YOUR otpController
     let decodedEmail: string;
 
     try {
