@@ -1,21 +1,22 @@
 version: "3.8"
 
 services:
+  # API Service
   api:
     build:
       context: .
       dockerfile: Dockerfile.dev
     container_name: chat-app-server
+    restart: always
     ports:
       - "4000:4000"
     environment:
       - NODE_ENV=development
       - PORT=4000
-      - DATABASE_URL=postgres://postgres:password@Blinkchat-postgres:5432/chatdb
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/chatdb
       - REDIS_HOST=Blinkchat-redis
       - REDIS_PORT=6379
     volumes:
-      # MATCH THE WORKDIR IN DOCKERFILE (/app)
       - .:/app
       - /app/node_modules
     depends_on:
@@ -23,10 +24,33 @@ services:
       - redis
     networks:
       - chat-network
+    command: ["npm", "run", "dev"]
+
+  # Worker Service
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: chat-app-worker
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:password@postgres:5432/chatdb
+      - REDIS_HOST=Blinkchat-redis
+      - REDIS_PORT=6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - chat-network
+    command: ["npm", "run", "worker"]
 
   postgres:
     image: postgres:15-alpine
-    container_name: Blinkchat-postgres
+    container_name: postgres
     restart: always
     environment:
       - POSTGRES_USER=postgres
@@ -41,8 +65,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: Blinkchat-redis
+    container_name: redis
     restart: always
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
