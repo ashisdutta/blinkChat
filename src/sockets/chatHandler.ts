@@ -1,47 +1,52 @@
 import { Server, Socket } from "socket.io";
-import { redis, CHAT_QUEUE_KEY } from "../utils/redis.js";
+import { redis, CHAT_QUEUE_KEY, CACHE_TTL } from "../utils/redis.js";
 
 export const chatHandler = (io: Server, socket: Socket) => {
-  socket.on("send_message", async (data) => {
-    // Extract Data from Frontend
-    // Expected: { roomId: "123", message: "Hello", userId: "u-1", userName: "Ashis" }
-    const { roomId, message, userId, userName } = data;
+    socket.on("send_message", async (data) => {
+        const { roomId, message, userId, userName } = data;
 
-    // Prepare the object (This is what goes into Redis)
-    const chatPayload = {
-      text: message, // <--- We use 'text' to match your DB schema
-      roomId,
-      userId,
-      userName,
-      createdAt: new Date().toISOString(),
-    };
+        // 1. Generate Timestamp once so Cache & DB match perfectly
+        const timestamp = Date.now(); 
 
-    try {
-      // Optimistic Update: Send to everyone in the room IMMEDIATELY
-      // We don't wait for the DB. We assume it will succeed.
-      io.to(roomId).emit("receive_message", chatPayload);
+        const chatPayload = {
+            text: message,
+            roomId,
+            userId,
+            userName,
+            // Convert to ISO string for DB/Frontend consistency
+            createdAt: new Date(timestamp).toISOString(), 
+        };
 
-      //Queue for Database: Push to Redis List
-      await redis.rpush(CHAT_QUEUE_KEY, JSON.stringify(chatPayload));
+        const payloadString = JSON.stringify(chatPayload);
+        const roomCacheKey = `chat:room:${roomId}`;
 
-<<<<<<< HEAD
-      console.log(`📨 Queued message for Room ${roomId}`);
-    } catch (error) {
-      console.error("Redis Error:", error);
-      socket.emit("error", { message: "Message failed to queue" });
-    }
-  });
-};
-=======
-        // 4. Queue for Database: Push to Redis List
-        await redis.rpush(CHAT_QUEUE_KEY, JSON.stringify(chatPayload));
-        
-        console.log(`📨 Queued message for Room ${roomId}`);
-        
+        try {
+            // A. Optimistic Update (Fastest)
+            io.to(roomId).emit("receive_message", chatPayload);
+
+            // ---------------------------------------------------------
+            // B. CACHE (ZSET) - For "Recent History"
+            // ---------------------------------------------------------
+            // We use a "Pipeline" to send multiple commands in one network round-trip
+            const pipeline = redis.pipeline();
+
+            // 1. Add to Sorted Set (Score = Timestamp)
+            pipeline.zadd(roomCacheKey, timestamp, payloadString);
+            
+            // 2. Reset the Expiry Timer (Keep cache alive while active)
+            pipeline.expire(roomCacheKey, CACHE_TTL);
+
+            // 3. Queue for DB (The Worker will pick this up)
+            pipeline.rpush(CHAT_QUEUE_KEY, payloadString);
+
+            // Execute all Redis commands at once
+            await pipeline.exec();
+            
+            console.log(`📨 Handled Room ${roomId} (Cached & Queued)`);
+
         } catch (error) {
-        console.error("Redis Error:", error);
-        socket.emit("error", { message: "Message failed to queue" });
+            console.error("Redis Error:", error);
+            socket.emit("error", { message: "Message failed to process" });
         }
-    })
+    });
 };
->>>>>>> 06f03ad45dea5a3be480f0cd4ff3b97e7ee9debe

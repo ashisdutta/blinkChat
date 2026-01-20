@@ -11,3 +11,4 @@ export const redis = new Redis({
 
 // 2. Constants
 export const CHAT_QUEUE_KEY = "chat:postgres_queue";
+export const CACHE_TTL = 60 * 60 * 2;
