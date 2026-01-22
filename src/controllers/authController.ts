@@ -10,7 +10,6 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 // --- Register ---
 export const register = async (req: Request, res: Response) => {
-  // 1. Validate Input (Username, Password, verificationToken)
   const result = registerSchema.safeParse(req.body);
 
   if (!result.success) {
@@ -23,7 +22,6 @@ export const register = async (req: Request, res: Response) => {
   const { userName, password, verificationToken } = result.data;
 
   try {
-    // 2. Verify the Token to get the Email
     let decodedEmail: string;
 
     try {
@@ -41,7 +39,6 @@ export const register = async (req: Request, res: Response) => {
         .json({ message: "Invalid or expired verification token" });
     }
 
-    // 3. Standard Checks
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ userName }, { email: decodedEmail }],
@@ -52,15 +49,28 @@ export const register = async (req: Request, res: Response) => {
       return res.status(409).json({ message: "User or Email already exists" });
     }
 
-    // 4. Create User
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
         userName,
         password: hashedPassword,
-        email: decodedEmail, // Use the email from the secure token
+        email: decodedEmail,
       },
+    });
+
+    const token = jwt.sign(
+      { userId: user.id, userName: user.userName },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
     });
 
     return res.status(201).json({ message: "User created", userId: user.id });
