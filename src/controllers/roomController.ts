@@ -207,7 +207,6 @@ export const allJoinedRooms = async (req: Request, res: Response) => {
           },
         },
       },
-
       select: {
         id: true,
         name: true,
@@ -219,35 +218,50 @@ export const allJoinedRooms = async (req: Request, res: Response) => {
       return res.status(200).json([]);
     }
 
-    // Redis Pipeline to fetch the last message for EVERY room at once
+    //last message from Redis(Pipeline for speed)
     const pipeline = redis.pipeline();
-
     rooms.forEach((room) => {
       const roomKey = `chat:room:${room.id}`;
-      // ZREVRANGE 0 0 gets the element with the highest score (the latest message)
       pipeline.zrevrange(roomKey, 0, 0);
     });
 
-    // Execute all Redis commands in parallel
     const redisResults = await pipeline.exec();
 
-    // Merge Redis data with Prisma Room data
-    const formattedRooms = rooms.map((room, index) => {
-      // redisResults structure: [[error, result], [error, result], ...]
+    //If Redis fails, mark as "needs fetch"
+    // We map this to a Promise array to handle DB fetches asynchronously
+    const roomPromises = rooms.map(async (room, index) => {
       const [error, result] = redisResults![index] ?? [null, null];
 
       let lastMessage = null;
       let lastMessageTime = null;
 
-      // If we got a result and it's not empty array
+      // CHECK REDIS FIRST
       if (!error && Array.isArray(result) && result.length > 0) {
         try {
-          // Redis stores the payload as a JSON string
           const payload = JSON.parse(result[0]);
           lastMessage = payload.text;
           lastMessageTime = payload.createdAt;
         } catch (e) {
           console.error(`Error parsing cache for room ${room.id}`, e);
+        }
+      }
+
+      // IF REDIS MISS (null data), FETCH FROM DB
+      if (!lastMessage || !lastMessageTime) {
+        const dbChat = await prisma.chat.findFirst({
+          where: { roomId: room.id },
+          orderBy: { createdAt: "desc" }, // Get the newest one
+          select: {
+            text: true,
+            createdAt: true,
+          },
+        });
+
+        if (dbChat) {
+          lastMessage = dbChat.text;
+          lastMessageTime = dbChat.createdAt;
+
+          //in future write in cache again! for fist retrival
         }
       }
 
@@ -260,8 +274,10 @@ export const allJoinedRooms = async (req: Request, res: Response) => {
       };
     });
 
-    // Sort rooms by latest activity (Newest first)
-    // If no message exists, we treat time as 0 so it drops to the bottom
+    // Resolve all promises
+    const formattedRooms = await Promise.all(roomPromises);
+
+    //Sort rooms by latest activity
     formattedRooms.sort((a, b) => {
       const timeA = a.lastMessageTime
         ? new Date(a.lastMessageTime).getTime()
