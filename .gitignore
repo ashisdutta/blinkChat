@@ -9,3 +9,4 @@ build/
 .env
 /src/generated/prisma
 
+.pnpm-store/
