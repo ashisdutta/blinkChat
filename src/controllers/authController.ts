@@ -94,6 +94,12 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
+
+
+
+
+
+
 // --- Login ---
 
 export const login = async (req: Request, res: Response) => {
@@ -145,6 +151,12 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+
+
+
+
 
 // --- Logout ---
 export const logout = (req: Request, res: Response) => {

@@ -24,7 +24,7 @@ services:
       - redis
     networks:
       - chat-network
-    command: ["npm", "run", "dev"]
+    command: ["pnpm", "run", "dev"]
 
   # Worker Service
   worker:
@@ -46,7 +46,7 @@ services:
       - postgres
     networks:
       - chat-network
-    command: ["npm", "run", "worker"]
+    command: ["pnpm", "run", "worker"]
 
   postgres:
     image: postgres:15-alpine
