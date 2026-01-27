@@ -13,7 +13,7 @@ export const createRoom = async (req: Request, res: Response) => {
     });
   }
 
-  const { name, latitude, longitude } = req.body;
+  const { name, latitude, longitude, description } = req.body;
   if (!req.user) {
     return res.json({
       message: "userId is not present",
@@ -31,9 +31,15 @@ export const createRoom = async (req: Request, res: Response) => {
     const newRoom = await prisma.room.create({
       data: {
         name,
+        description,
         latitude: cleanLocation.latitude,
         longitude: cleanLocation.longitude,
         ownerId: req.user.userId,
+        members: {
+          connect: {
+            id: req.user.userId,
+          },
+        },
       },
     });
 
@@ -51,7 +57,7 @@ export const getNearbyRooms = async (req: Request, res: Response) => {
     const { latitude, longitude } = req.query;
     let userLoc;
     try {
-      userLoc = validateLocation(latitude, longitude);
+      userLoc = validateLocation(Number(latitude), Number(longitude));
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
     }

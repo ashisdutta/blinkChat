@@ -11,7 +11,8 @@ export const loginSchema = z.object({
 });
 
 export const createRoomSchema = z.object({
-  name: z.string().min(1, "Room name is required"), // Ensure name isn't empty
+  name: z.string().min(1, "Room name is required"),
+  description: z.string().optional(),
   latitude: z.coerce
     .number()
     .min(-90, "Latitude must be -90 or greater")
