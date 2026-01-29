@@ -1,5 +1,6 @@
 import { redis, CACHE_TTL } from "../utils/redis.js";
 import prisma from "../utils/prisma.js";
+import { tr } from "zod/v4/locales";
 
 export const ChatService = {
   /**
@@ -55,7 +56,7 @@ export const ChatService = {
 
     if (messages.length === 0 && direction !== "newer") {
       console.log(`⚠️ Cache miss for Room ${roomId}. Fetching from DB...`);
-      messages = await this.fetchFromDB(roomId, limit, cursor);
+      messages = await this.fetchFromDB(roomId,limit, cursor);
 
       // OPTIONAL: Re-populate Redis (Cache-Aside)
       if (messages.length > 0) {
@@ -75,8 +76,8 @@ export const ChatService = {
   /**
    * Helper: Fallback to Database if Redis is empty
    */
-  async fetchFromDB(roomId: string, limit: number, cursor?: number) {
-    return await prisma.chat
+  async fetchFromDB(roomId: string,limit: number, cursor?: number) {
+    const msgs =  await prisma.chat
       .findMany({
         where: {
           roomId,
@@ -86,9 +87,24 @@ export const ChatService = {
               }
             : {}),
         },
+        include:{
+          user:{
+            select:{
+              userName:true
+            }
+          }
+        },
         take: limit,
         orderBy: { createdAt: "desc" }, // Latest first
       })
-      .then((msgs) => msgs.reverse()); // Return in chronological order
+      .then((msgs) => msgs.reverse());
+      
+      return msgs.map(msg => ({
+        id: msg.id,
+        text: msg.text,
+        userId: msg.userId,
+        userName: msg.user.userName,
+        createdAt: msg.createdAt.toISOString(),
+    }));// Return in chronological order
   },
 };

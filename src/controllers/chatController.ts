@@ -2,7 +2,7 @@ import { type Request, type Response } from "express";
 import { ChatService } from "../servies/chatService.js";
 
 export const getRoomMessages = async (req: Request, res: Response) => {
-  const { roomId } = req.params;
+  const { roomId} = req.params;
   const { cursor, direction = "older", limit = "100" } = req.query;
 
   // Convert types safely

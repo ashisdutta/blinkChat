@@ -84,7 +84,7 @@ export const getNearbyRooms = async (req: Request, res: Response) => {
 
 // 3. Edit Room info
 export const editRoomsInfo = async (req: Request, res: Response) => {
-  const { name } = req.body;
+  const { name, description } = req.body;
   const { roomId } = req.params;
   const { userId } = req.user!;
 
@@ -106,16 +106,17 @@ export const editRoomsInfo = async (req: Request, res: Response) => {
   }
 
   try {
-    const updatedRoom = await prisma.room.update({
+    const updatedRoom = await prisma.room.updateMany({
       where: {
         id: roomId as string,
       },
       data: {
         name: name,
+        description:description
       },
     });
 
-    return res.json({ message: "Room updated", newname: updatedRoom.name });
+    return res.json({ message: "Room updated"});
   } catch (error) {
     return res.status(500).json({
       error: error,
