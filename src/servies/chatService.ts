@@ -56,7 +56,7 @@ export const ChatService = {
 
     if (messages.length === 0 && direction !== "newer") {
       console.log(`⚠️ Cache miss for Room ${roomId}. Fetching from DB...`);
-      messages = await this.fetchFromDB(roomId,limit, cursor);
+      messages = await this.fetchFromDB(roomId, limit, cursor);
 
       // OPTIONAL: Re-populate Redis (Cache-Aside)
       if (messages.length > 0) {
@@ -76,8 +76,8 @@ export const ChatService = {
   /**
    * Helper: Fallback to Database if Redis is empty
    */
-  async fetchFromDB(roomId: string,limit: number, cursor?: number) {
-    const msgs =  await prisma.chat
+  async fetchFromDB(roomId: string, limit: number, cursor?: number) {
+    const msgs = await prisma.chat
       .findMany({
         where: {
           roomId,
@@ -87,24 +87,30 @@ export const ChatService = {
               }
             : {}),
         },
-        include:{
-          user:{
-            select:{
-              userName:true
-            }
-          }
+        include: {
+          user: {
+            select: {
+              id: true,
+              userName: true,
+              photo: true,
+            },
+          },
         },
         take: limit,
         orderBy: { createdAt: "desc" }, // Latest first
       })
       .then((msgs) => msgs.reverse());
-      
-      return msgs.map(msg => ({
-        id: msg.id,
-        text: msg.text,
-        userId: msg.userId,
+
+    return msgs.map((msg) => ({
+      id: msg.id,
+      text: msg.text,
+      userId: msg.userId,
+      userName: msg.user.userName,
+      createdAt: msg.createdAt.toISOString(),
+      user: {
         userName: msg.user.userName,
-        createdAt: msg.createdAt.toISOString(),
-    }));// Return in chronological order
+        photo: msg.user.photo || null,
+      },
+    }));
   },
 };
