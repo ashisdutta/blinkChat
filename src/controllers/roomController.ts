@@ -63,7 +63,20 @@ export const getNearbyRooms = async (req: Request, res: Response) => {
       return res.status(400).json({ message: error.message });
     }
 
-    const allRooms = await prisma.room.findMany();
+    const allRooms = await prisma.room.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        photo: true,
+        latitude: true,
+        longitude: true,
+        radius: true,
+        members: {
+          select: { id: true },
+        },
+      },
+    });
     const visibleRooms = allRooms.filter((room) => {
       const dist = getDistance(
         { latitude: userLoc.latitude, longitude: userLoc.longitude },
@@ -72,9 +85,14 @@ export const getNearbyRooms = async (req: Request, res: Response) => {
       return dist <= room.radius;
     });
 
+    const responseRooms = visibleRooms.map((room) => ({
+      ...room,
+      membersCount: (room as any).members ? (room as any).members.length : 0,
+    }));
+
     res.status(200).json({
       message: "Success",
-      count: visibleRooms.length,
+      count: responseRooms.length,
       rooms: visibleRooms,
     });
   } catch (error: any) {
@@ -314,16 +332,16 @@ export const getRoomInfo = async (req: Request, res: Response) => {
         id: true,
         name: true,
         photo: true,
-        description: true, // <--- Add this (Ensure it exists in your Prisma Schema!)
-        ownerId: true, // Useful to know if I can edit settings
+        description: true,
+        ownerId: true,
         createdAt: true,
         members: {
           // <--- Fetch actual members
           select: {
             id: true,
-            userName: true, // or 'name', whatever your User model has
+            userName: true,
             email: true,
-            // photo: true  // if users have photos
+            photo: true,
           },
         },
         _count: { select: { members: true } },
