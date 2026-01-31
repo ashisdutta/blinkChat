@@ -4,6 +4,7 @@ import {
   login,
   logout,
   getMe,
+  updateUser,
 } from "../controllers/authController.js";
 import { sendOtp, verifyOtp } from "../controllers/otpController.js";
 import { sendOtpLimiter, verifyOtpLimiter } from "../middleware/rateLimiter.js";
@@ -31,5 +32,6 @@ router.get("/imagekit", getAuthParams);
 
 // Protected Route
 router.get("/me", protect, getMe);
+router.put("/update", protect,updateUser)
 
 export default router;

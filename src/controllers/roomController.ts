@@ -323,7 +323,7 @@ export const getRoomInfo = async (req: Request, res: Response) => {
             id: true,
             userName: true, // or 'name', whatever your User model has
             email: true,
-            // photo: true  // if users have photos
+            photo: true
           },
         },
         _count: { select: { members: true } },

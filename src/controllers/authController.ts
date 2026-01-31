@@ -167,7 +167,7 @@ export const getMe = async (req: Request, res: Response) => {
   // If we reach here, the 'protect' middleware has already passed
   const user = await prisma.user.findUnique({
     where: { id: req.user?.userId },
-    select: { id: true, userName: true, email: true },
+    select: { id: true, userName: true, photo: true, email: true },
   });
 
   if (!user) {
@@ -177,3 +177,33 @@ export const getMe = async (req: Request, res: Response) => {
 
   res.json(user);
 };
+
+
+
+//update username data
+
+export const updateUser = async (req:Request, res:Response)=>{
+  const {userId} = req.user!;
+  const {userName, photo} = req.body;
+  try {
+    const updated = await prisma.user.update({
+      where:{
+        id: userId as string
+      },
+      data:{
+        userName,
+        photo
+      }
+    })
+
+    if(updated){
+      return res.status(200).json({
+        msg: "update successful"
+      })
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error
+    })
+  }
+}
